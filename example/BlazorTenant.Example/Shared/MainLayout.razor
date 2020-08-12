@@ -1,0 +1,19 @@
+﻿@inherits LayoutComponentBase
+@using Microsoft.AspNetCore.Components.WebAssembly.Authentication
+@inject Tenant tenant
+@inject NavigationManager Navigation
+@inject SignOutSessionStateManager SignOutManager
+
+<div class="sidebar">
+    <NavMenu />
+</div>
+
+<div class="main">
+    <div class="top-row px-4">
+        <a href="http://blazor.net" target="_blank" class="ml-md-auto">@(tenant?.Identifier ?? "N/A")</a>
+    </div>
+
+    <div class="content px-4">
+        @Body
+    </div>
+</div>

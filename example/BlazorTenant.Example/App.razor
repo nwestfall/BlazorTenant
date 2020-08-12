@@ -1,0 +1,18 @@
+<CascadingAuthenticationState>
+    <MultiTenantRouter AppAssembly="@typeof(Program).Assembly">
+        <Found Context="routeData">
+            <RouteView RouteData="@routeData" DefaultLayout="@typeof(MainLayout)" />
+        </Found>
+        <NotFound>
+            <LayoutView Layout="@typeof(MainLayout)">
+                <p>Sorry, there's nothing at this address.</p>
+            </LayoutView>
+        </NotFound>
+        <NoTenant Context="message">
+            <LayoutView Layout="@typeof(MainLayout)">
+                <p>@message</p>
+            </LayoutView>
+        </NoTenant>
+    </MultiTenantRouter>
+</CascadingAuthenticationState>
+
