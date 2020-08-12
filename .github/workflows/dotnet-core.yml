@@ -1,0 +1,40 @@
+name: .NET Core
+
+on:
+  push:
+    # Sequence of patterns matched against refs/tags
+    tags:
+    - 'v*' # Push events to matching v*, i.e. v1.0, v20.15.10
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v2
+    - name: Setup .NET Core
+      uses: actions/setup-dotnet@v1
+      with:
+        dotnet-version: 3.1.101
+    - name: Get the version
+      id: get_version
+      run: echo ::set-output name=VERSION::${GITHUB_REF/refs\/tags\/\v/}
+    - name: Install dependencies
+      run: dotnet restore src/BlazorTenant/BlazorTenant.csproj
+    - name: Build
+      run: dotnet build /p:Version="${{ steps.get_version.outputs.VERSION }}" --configuration Release --no-restore src/BlazorTenant/BlazorTenant.csproj
+    - name: Package
+      run: dotnet pack /p:Version="${{ steps.get_version.outputs.VERSION }}" --configuration Release --no-restore src/BlazorTenant/BlazorTenant.csproj
+    - name: Publish NuGet
+      run: dotnet nuget push ${{ github.workspace }}/src/BlazorTenant/bin/Release/BlazorTenant.${{ steps.get_version.outputs.VERSION }}.nupkg -k ${{ secrets.NUGET_KEY }} -s https://api.nuget.org/v3/index.json
+    - name: Create Release
+      id: create_release
+      uses: actions/create-release@latest
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # This token is provided by Actions, you do not need to create your own token
+      with:
+        tag_name: ${{ github.ref }}
+        release_name: Release ${{ github.ref }}
+        draft: false
+        prerelease: false
