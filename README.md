@@ -1,3 +1,6 @@
+[![NuGet version](https://badge.fury.io/nu/BlazorTenant.svg)](https://badge.fury.io/nu/BlazorTenant)
+
+
 # BlazorTenant
 
 Support multi-tenantancy in your Blazor application.  You don't need to deploy multiple versions, just load a different config based on the url.
