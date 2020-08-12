@@ -105,5 +105,7 @@ I was learning Blazor for the first time while building this, but it helped me l
 
 ## Future Plans
  [ ] Build a `TenantNavigationManager`
+
  [ ] Try to make `ServiceProvider` not included
+ 
  [ ] Make an API based `TenantStore`
