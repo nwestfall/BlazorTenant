@@ -23,7 +23,6 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\BlazorTenant\BlazorTenant.csproj" />
-    <ProjectReference Include="..\..\example\BLazorTenant.Example\BlazorTenant.Example.csproj" />
   </ItemGroup>
 
 </Project>

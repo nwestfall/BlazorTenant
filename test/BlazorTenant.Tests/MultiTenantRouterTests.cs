@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 using Microsoft.Extensions.DependencyInjection;
 using System.Collections.ObjectModel;
 using System.Collections.Generic;
+using System.Reflection;
 
 namespace BlazorTenant.Tests
 {
@@ -54,7 +55,7 @@ namespace BlazorTenant.Tests
             };
 
             var cut = ctx.RenderComponent<MultiTenantRouter>(
-                ("AppAssembly", typeof(BlazorTenant.Example.Program).Assembly),
+                ("AppAssembly", Assembly.GetExecutingAssembly()),
                 ("PreferExactMatches", preferExactMatches),
                 ("Found",  found),
                 ("NotFound", notFound),
@@ -99,7 +100,7 @@ namespace BlazorTenant.Tests
             };
 
             var cut = ctx.RenderComponent<MultiTenantRouter>(
-                ("AppAssembly", typeof(BlazorTenant.Example.Program).Assembly),
+                ("AppAssembly", Assembly.GetExecutingAssembly()),
                 ("PreferExactMatches", preferExactMatches),
                 ("Found",  found),
                 ("NotFound", notFound),
@@ -118,7 +119,7 @@ namespace BlazorTenant.Tests
 
             SetupContext(ctx);
 
-            _navigationManager.NotifyLocationChanged("https://www.example.com/company1/nopage", false);
+            _navigationManager.NotifyLocationChanged("https://www.example.com/company1/test", false);
 
             RenderFragment<RouteData> found = __builder =>
             {
@@ -144,7 +145,7 @@ namespace BlazorTenant.Tests
             };
 
             var cut = ctx.RenderComponent<MultiTenantRouter>(
-                ("AppAssembly", typeof(BlazorTenant.Example.Program).Assembly),
+                ("AppAssembly", Assembly.GetExecutingAssembly()),
                 ("PreferExactMatches", preferExactMatches),
                 ("Found",  found),
                 ("NotFound", notFound),
@@ -188,5 +189,11 @@ namespace BlazorTenant.Tests
                 return Task.CompletedTask;
             }
         }
+
+        [Route("")]
+        public class IndexComponent : ComponentBase { }
+        
+        [Route("foo")]
+        public class FooComponent : ComponentBase { }
     }
 }
