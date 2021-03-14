@@ -1,23 +1,27 @@
-// https://github.com/dotnet/aspnetcore/blob/main/src/Components/Components/src/Routing/RouteTable.cs
+// https://github.com/dotnet/aspnetcore/blob/main/src/Components/Components/src/Routing/LegacyRouteMatching/LegacyRouteTable.cs
+
+using System;
 
 namespace BlazorTenant
 {
-    internal class MultiTenantRouteTable : IRouteTable
+    internal class LegacyMultiTenantRouteTable : IRouteTable
     {
-        public MultiTenantRouteTable(MultiTenantRouteEntry[] routes)
+        public LegacyMultiTenantRouteTable(LegacyMultiTenantRouteEntry[] routes)
         {
             Routes = routes;
         }
 
-        public MultiTenantRouteEntry[] Routes { get; }
+        public LegacyMultiTenantRouteEntry[] Routes { get; }
 
         public void Route(MultiTenantRouteContext routeContext)
         {
-            for(var i = 0; i< Routes.Length; i++)
+            for (var i = 0; i < Routes.Length; i++)
             {
                 Routes[i].Match(routeContext);
-                if(routeContext.Handler != null)
+                if (routeContext.Handler != null)
+                {
                     return;
+                }
             }
         }
 

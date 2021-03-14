@@ -17,16 +17,21 @@ namespace BlazorTenant
         /// <param name="tenant">Tenant</param>
         /// <returns>True if added</returns>
         public virtual bool TryAdd(Tenant tenant)
-            => _tenants.TryAdd(tenant.Identifier?.ToLower(), tenant);
+        {
+            if(tenant.Identifier != null)
+                return _tenants.TryAdd(tenant.Identifier.ToLower(), tenant);
+
+            return false;
+        }
 
         /// <summary>
         /// Try and get the tenant
         /// </summary>
         /// <param name="identifier">Tenant identifier</param>
         /// <returns>The tenant or null</returns>
-        public virtual Tenant TryGet(string identifier)
+        public virtual Tenant? TryGet(string? identifier)
         {
-            if(_tenants.TryGetValue(identifier?.ToLower(), out Tenant tenant))
+            if(identifier != null && _tenants.TryGetValue(identifier, out Tenant? tenant))
                 return tenant;
 
             return null;
@@ -46,6 +51,15 @@ namespace BlazorTenant
         /// <param name="tenant">The tenant</param>
         /// <returns>True if updated</returns>
         public virtual bool TryUpdate(Tenant tenant)
-            => _tenants.TryUpdate(tenant.Identifier?.ToLower(), tenant, TryGet(tenant.Identifier));
+        {
+            if(tenant.Identifier != null)
+            {
+                var oldTenant = TryGet(tenant.Identifier);
+                if(oldTenant != null)
+                    return _tenants.TryUpdate(tenant.Identifier.ToLower(), tenant, oldTenant);
+            }
+
+            return false;
+        }
     }
 }

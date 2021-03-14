@@ -1,4 +1,4 @@
-// https://github.com/dotnet/aspnetcore/blob/main/src/Components/Components/src/Routing/TemplateParser.cs
+// https://github.com/dotnet/aspnetcore/blob/main/src/Components/Components/src/Routing/LegacyRouteMatching/LegacyTemplateParser.cs
 
 using System;
 
@@ -12,28 +12,28 @@ namespace BlazorTenant
     // The class in here just takes care of parsing a route and extracting
     // simple parameters from it.
     // Some differences with ASP.NET Core routes are:
+    // * We don't support catch all parameter segments.
     // * We don't support complex segments.
     // The things that we support are:
     // * Literal path segments. (Like /Path/To/Some/Page)
     // * Parameter path segments (Like /Customer/{Id}/Orders/{OrderId})
-    // * Catch-all parameters (Like /blog/{*slug})
-    internal class MultiTenantTemplateParser
+    internal class LegacyMultiTenantTemplateParser
     {
         public static readonly char[] InvalidParameterNameCharacters =
-            new char[] { '{', '}', '=', '.' };
+            new char[] { '*', '{', '}', '=', '.' };
 
-        internal static MultiTenantRouteTemplate ParseTemplate(string template)
+        internal static LegacyMultiTenantRouteTemplate ParseTemplate(string template)
         {
             var originalTemplate = template;
             template = template.Trim('/');
             if (template == string.Empty)
             {
                 // Special case "/";
-                return new MultiTenantRouteTemplate("/", Array.Empty<MultiTenantTemplateSegment>());
+                return new LegacyMultiTenantRouteTemplate("/", Array.Empty<LegacyMultiTenantTemplateSegment>());
             }
 
             var segments = template.Split('/');
-            var templateSegments = new MultiTenantTemplateSegment[segments.Length];
+            var templateSegments = new LegacyMultiTenantTemplateSegment[segments.Length];
             for (int i = 0; i < segments.Length; i++)
             {
                 var segment = segments[i];
@@ -50,12 +50,7 @@ namespace BlazorTenant
                         throw new InvalidOperationException(
                             $"Invalid template '{template}'. Missing '{{' in parameter segment '{segment}'.");
                     }
-                    if (segment[^1] == '?')
-                    {
-                        throw new InvalidOperationException(
-                            $"Invalid template '{template}'. '?' is not allowed in literal segment '{segment}'.");
-                    }
-                    templateSegments[i] = new MultiTenantTemplateSegment(originalTemplate, segment, isParameter: false);
+                    templateSegments[i] = new LegacyMultiTenantTemplateSegment(originalTemplate, segment, isParameter: false);
                 }
                 else
                 {
@@ -78,19 +73,13 @@ namespace BlazorTenant
                             $"Invalid template '{template}'. The character '{segment[invalidCharacter]}' in parameter segment '{segment}' is not allowed.");
                     }
 
-                    templateSegments[i] = new (originalTemplate, segment.Substring(1, segment.Length - 2), isParameter: true);
+                    templateSegments[i] = new LegacyMultiTenantTemplateSegment(originalTemplate, segment.Substring(1, segment.Length - 2), isParameter: true);
                 }
             }
 
             for (int i = 0; i < templateSegments.Length; i++)
             {
                 var currentSegment = templateSegments[i];
-
-                if (currentSegment.IsCatchAll && i != templateSegments.Length - 1)
-                {
-                    throw new InvalidOperationException($"Invalid template '{template}'. A catch-all parameter can only appear as the last segment of the route template.");
-                }
-
                 if (!currentSegment.IsParameter)
                 {
                     continue;
@@ -100,7 +89,7 @@ namespace BlazorTenant
                 {
                     var nextSegment = templateSegments[j];
 
-                    if (currentSegment.IsOptional && !nextSegment.IsOptional && !nextSegment.IsCatchAll)
+                    if (currentSegment.IsOptional && !nextSegment.IsOptional)
                     {
                         throw new InvalidOperationException($"Invalid template '{template}'. Non-optional parameters or literal routes cannot appear after optional parameters.");
                     }
@@ -113,7 +102,7 @@ namespace BlazorTenant
                 }
             }
 
-            return new MultiTenantRouteTemplate(template, templateSegments);
+            return new LegacyMultiTenantRouteTemplate(template, templateSegments);
         }
     }
 }
