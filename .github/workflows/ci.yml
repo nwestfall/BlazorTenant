@@ -19,7 +19,7 @@ jobs:
     - name: Install dependencies
       run: dotnet restore src/BlazorTenant/BlazorTenant.csproj
     - name: Build
-      run: dotnet build /p:Version="${{ steps.get_version.outputs.VERSION }}" --configuration Release --no-restore src/BlazorTenant/BlazorTenant.csproj
+      run: dotnet build --configuration Release --no-restore src/BlazorTenant/BlazorTenant.csproj
     - name: Test
       run: dotnet test --configuration Release
       working-directory: test/BlazorTenant.Tests
