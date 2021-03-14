@@ -1,4 +1,4 @@
-// https://github.com/dotnet/aspnetcore/blob/master/src/Components/Components/src/Routing/RouteTemplate.cs
+// https://github.com/dotnet/aspnetcore/blob/main/src/Components/Components/src/Routing/RouteTemplate.cs
 
 using System.Diagnostics;
 using System.Linq;
@@ -13,6 +13,7 @@ namespace BlazorTenant
             TemplateText = templateText;
             Segments = segments;
             OptionalSegmentsCount = segments.Count(template => template.IsOptional);
+            ContainsCatchAllSegment = segments.Any(template => template.IsCatchAll);
         }
 
         public string TemplateText { get; }
@@ -20,5 +21,7 @@ namespace BlazorTenant
         public MultiTenantTemplateSegment[] Segments { get; }
 
         public int OptionalSegmentsCount { get; }
+
+        public bool ContainsCatchAllSegment { get; }
     }
 }

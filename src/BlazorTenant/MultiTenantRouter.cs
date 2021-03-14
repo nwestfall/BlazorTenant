@@ -1,11 +1,15 @@
 // https://github.com/dotnet/aspnetcore/blob/master/src/Components/Components/src/Routing/Router.cs
 // added support for tenants
 
+#nullable disable warnings
+
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
 using System.Reflection;
+using System.Runtime.ExceptionServices;
+using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Rendering;
@@ -28,6 +32,14 @@ namespace BlazorTenant
         string _locationAbsolute;
         bool _navigationInterceptionEnabled;
         ILogger<MultiTenantRouter> _logger;
+
+        private CancellationTokenSource _onNavigateCts;
+
+        private Task _previousOnNavigateTask = Task.CompletedTask;
+
+        private readonly HashSet<Assembly> _assemblies = new HashSet<Assembly>();
+
+        private bool _onNavigateCalled = false;
 
         [Inject] private NavigationManager NavigationManager { get; set; }
 
@@ -57,12 +69,36 @@ namespace BlazorTenant
         [Parameter] public RenderFragment<RouteData> Found { get; set; }
 
         /// <summary>
+        /// Gets or sets the content to display when asynchronous navigation is in progress.
+        /// </summary>
+        /// <value></value>
+        [Parameter] public RenderFragment? Navigating { get; set; }
+
+        /// <summary>
         /// Gets or sets the content to display when no tenant id found for the requested route.
         /// </summary>
         /// <value></value>
         [Parameter] public RenderFragment<string> NoTenant { get; set; }
 
-        private MultiTenantRouteTable Routes { get; set; }
+        /// <summary>
+        /// Gets or sets a handler that should be called before navigating to a new page.
+        /// </summary>
+        [Parameter] public EventCallback<MultiTenantNavigationContext> OnNavigateAsync { get; set; }
+
+        /// <summary>
+        /// Gets or sets a flag to indicate whether route matching should prefer exact matches
+        /// over wildcards.
+        /// </summary>
+        /// <remarks>
+        /// <para>
+        /// Important: all applications should explicitly set this to true. The option to set it to false
+        /// (or leave unset, which defaults to false) is only provided for backward compatibility.
+        /// In .NET 6, this option will be removed and the router will always prefer exact matches.
+        /// </para>
+        /// </remarks>
+        [Parameter] public bool PreferExactMatches { get; set; }
+
+        private IRouteTable Routes { get; set; }
 
         /// <inheritdoc />
         public void Attach(RenderHandle renderHandle)
@@ -75,7 +111,7 @@ namespace BlazorTenant
         }
 
         /// <inheritdoc />
-        public Task SetParametersAsync(ParameterView parameters)
+        public async Task SetParametersAsync(ParameterView parameters)
         {
             parameters.SetParameterProperties(this);
 
@@ -106,11 +142,13 @@ namespace BlazorTenant
                 throw new InvalidOperationException($"The {nameof(MultiTenantRouter)} component requires a value for the parameter {nameof(NoTenant)}.");
             }
 
+            if(!_onNavigateCalled)
+            {
+                _onNavigateCalled = true;
+                await RunOnNavigateAsync(NavigationManager.ToBaseRelativePath(_locationAbsolute), isNavigationIntercepted: false);
+            }
 
-            var assemblies = AdditionalAssemblies == null ? new[] { AppAssembly } : new[] { AppAssembly }.Concat(AdditionalAssemblies);
-            Routes = MultiTenantRouteTableFactory.Create(assemblies);
             Refresh(isNavigationIntercepted: false);
-            return Task.CompletedTask;
         }
 
         /// <inheritdoc />
@@ -127,8 +165,38 @@ namespace BlazorTenant
                 : str.Substring(0, firstIndex);
         }
 
+        private void RefreshRouteTable()
+        {
+            var assemblies = AdditionalAssemblies == null ? new[] { AppAssembly } : new[] { AppAssembly }.Concat(AdditionalAssemblies);
+            var assembliesSet = new HashSet<Assembly>(assemblies);
+
+            if (!_assemblies.SetEquals(assembliesSet))
+            {
+                Routes = PreferExactMatches
+                    ? MultiTenantRouteTableFactory.Create(assemblies)
+                    : LegacyMultiTenantRouteTableFactory.Create(assemblies);
+                _assemblies.Clear();
+                _assemblies.UnionWith(assembliesSet);
+            }
+        }
+
         private void Refresh(bool isNavigationIntercepted)
         {
+            // If an `OnNavigateAsync` task is currently in progress, then wait
+            // for it to complete before rendering. Note: because _previousOnNavigateTask
+            // is initialized to a CompletedTask on initialization, this will still
+            // allow first-render to complete successfully.
+            if (_previousOnNavigateTask.Status != TaskStatus.RanToCompletion)
+            {
+                if (Navigating != null)
+                {
+                    _renderHandle.Render(Navigating);
+                }
+                return;
+            }
+
+            RefreshRouteTable();
+
             var locationPath = NavigationManager.ToBaseRelativePath(_locationAbsolute);
             locationPath = StringUntilAny(locationPath, _queryOrHashStartChar);
             MultiTenantRouteContext context = null;
@@ -180,12 +248,53 @@ namespace BlazorTenant
             }
         }
 
+        internal async ValueTask RunOnNavigateAsync(string path, bool isNavigationIntercepted)
+        {
+            // Cancel the CTS instead of disposing it, since disposing does not
+            // actually cancel and can cause unintended Object Disposed Exceptions.
+            // This effectivelly cancels the previously running task and completes it.
+            _onNavigateCts?.Cancel();
+            // Then make sure that the task has been completely cancelled or completed
+            // before starting the next one. This avoid race conditions where the cancellation
+            // for the previous task was set but not fully completed by the time we get to this
+            // invocation.
+            await _previousOnNavigateTask;
+
+            var tcs = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            _previousOnNavigateTask = tcs.Task;
+
+            if (!OnNavigateAsync.HasDelegate)
+            {
+                Refresh(isNavigationIntercepted);
+            }
+
+            _onNavigateCts = new CancellationTokenSource();
+            var navigateContext = new MultiTenantNavigationContext(path, _onNavigateCts.Token);
+
+            var cancellationTcs = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            navigateContext.CancellationToken.Register(state =>
+                ((TaskCompletionSource)state).SetResult(), cancellationTcs);
+
+            try
+            {
+                // Task.WhenAny returns a Task<Task> so we need to await twice to unwrap the exception
+                var task = await Task.WhenAny(OnNavigateAsync.InvokeAsync(navigateContext), cancellationTcs.Task);
+                await task;
+                tcs.SetResult();
+                Refresh(isNavigationIntercepted);
+            }
+            catch (Exception e)
+            {
+                _renderHandle.Render(builder => ExceptionDispatchInfo.Throw(e));
+            }
+        }
+
         private void OnLocationChanged(object sender, LocationChangedEventArgs args)
         {
             _locationAbsolute = args.Location;
             if (_renderHandle.IsInitialized && Routes != null)
             {
-                Refresh(args.IsNavigationIntercepted);
+                _ = RunOnNavigateAsync(NavigationManager.ToBaseRelativePath(_locationAbsolute), args.IsNavigationIntercepted);
             }
         }
 

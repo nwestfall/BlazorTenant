@@ -1,4 +1,4 @@
-// https://github.com/dotnet/aspnetcore/blob/master/src/Components/Components/src/Routing/OptionalTypeRouteConstraint.cs
+// https://github.com/dotnet/aspnetcore/blob/main/src/Components/Components/src/Routing/LegacyRouteMatching/LegacyOptionalTypeRouteConstraint.cs
 
 namespace BlazorTenant
 {
@@ -7,18 +7,18 @@ namespace BlazorTenant
     /// type.
     /// </summary>
     /// <typeparam name="T">The type to which the value must be parseable.</typeparam>
-    internal class MultiTenantOptionalTypeRouteConstraint<T> : MultiTenantRouteConstraint
+    internal class LegacyMultiTenantOptionalTypeRouteConstraint<T> : LegacyMultiTenantRouteConstraint
     {
         public delegate bool TryParseDelegate(string str, out T result);
 
         private readonly TryParseDelegate _parser;
 
-        public MultiTenantOptionalTypeRouteConstraint(TryParseDelegate parser)
+        public LegacyMultiTenantOptionalTypeRouteConstraint(TryParseDelegate parser)
         {
             _parser = parser;
         }
 
-        public override bool Match(string pathSegment, out object convertedValue)
+        public override bool Match(string pathSegment, out object? convertedValue)
         {
             // Unset values are set to null in the Parameters object created in
             // the RouteContext. To match this pattern, unset optional parmeters

@@ -31,6 +31,6 @@ namespace BlazorTenant
         /// </summary>
         /// <param name="id"></param>
         /// <returns></returns>
-        Tenant TryGet(string identifier);
+        Tenant? TryGet(string? identifier);
     }
 }

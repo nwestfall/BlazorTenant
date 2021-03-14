@@ -27,7 +27,7 @@ namespace BlazorTenant
         /// Tenant URL Identifier
         /// </summary>
         /// <value></value>
-        public string Identifier { get; internal set; }
+        public string? Identifier { get; internal set; }
 
         /// <summary>
         /// Tenant Parameters
